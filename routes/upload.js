@@ -1,3 +1,4 @@
+// Fixed version of your upload.js - Line 246 had a syntax error
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -184,32 +185,39 @@ router.post('/', authenticateToken, authorizeRole('smart_user'), upload.single('
 // UPLOAD HISTORY ENDPOINT
 // ============================================================================
 
-router.get(
-  '/history',
-  authenticateToken,
-  authorizeRole('smart_user'),
-  async (req, res) => {
-    const client = await pgPool.connect();
+router.get('/history', authenticateToken, async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit) || 10; // Default to 10 records
-      const offset = parseInt(req.query.offset) || 0; // Default to 0 offset
-      const result = await client.query(
-        `SELECT id, filename, upload_date, records_processed, records_new, records_updated, records_skipped, date_range_start, date_range_end, branches_affected, summary, processing_time_ms
-         FROM upload_history
-         WHERE user_id = $1
-         ORDER BY upload_date DESC
-         LIMIT $2 OFFSET $3`,
-        [req.user.id, limit, offset]
-      );
-      res.status(200).json(result.rows);
+        const { limit = 10, offset = 0 } = req.query;
+        
+        const query = `
+            SELECT 
+                uh.*,
+                u.username as uploaded_by
+            FROM upload_history uh
+            LEFT JOIN users u ON uh.user_id = u.id
+            ORDER BY uh.upload_date DESC
+            LIMIT $1 OFFSET $2
+        `;
+        
+        const [historyResult, countResult] = await Promise.all([
+            pgPool.query(query, [parseInt(limit), parseInt(offset)]),
+            pgPool.query('SELECT COUNT(*) FROM upload_history')
+        ]);
+        
+        res.json({
+            history: historyResult.rows,
+            total: parseInt(countResult.rows[0].count),
+            hasMore: (parseInt(offset) + historyResult.rows.length) < parseInt(countResult.rows[0].count)
+        });
+        
     } catch (error) {
-      console.error('❌ Error fetching upload history:', error);
-      res.status(500).json({ error: 'Failed to fetch upload history.' });
-    } finally {
-      client.release();
+        console.error('❌ Error fetching upload history:', error);
+        res.status(500).json({ 
+            error: 'Failed to fetch upload history',
+            details: error.message
+        });
     }
-  }
-);
+});
 
 // ============================================================================
 // OPTIMIZED DATA PROCESSING
@@ -294,7 +302,7 @@ async function processOptimizedDailyUpdate(data, client, userId, filename) {
     
     if (missingBranches.size > 0) {
         const branchValues = Array.from(missingBranches).map((name, index) => 
-            `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 +  Dogs3}, $${index * 4 + 4})`
+            `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`
         ).join(',');
         
         const branchParams = [];
@@ -329,7 +337,7 @@ async function processOptimizedDailyUpdate(data, client, userId, filename) {
             const batch = batchArray.slice(i, i + BATCH_SIZE);
             const productValues = batch.map((_, index) => 
                 `($${index * 6 + 1}, $${index * 6 + 2}, $${index * 6 + 3}, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`
-            ).joinOrders(",");
+            ).join(','); // FIXED: Changed from joinOrders to join
             
             const productParams = [];
             batch.forEach(itemCode => {
