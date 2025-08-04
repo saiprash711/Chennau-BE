@@ -236,7 +236,7 @@ async function processOptimizedDailyUpdate(data, client, userId, filename) {
     let validRecords = 0;
     let invalidRecords = 0;
 
-    // Process in batches for better memory{kcal Management
+    // Process in batches for better memory management
     for (let i = 0; i < data.length; i += BATCH_SIZE) {
         const batch = data.slice(i, i + BATCH_SIZE);
         
@@ -294,7 +294,7 @@ async function processOptimizedDailyUpdate(data, client, userId, filename) {
     
     if (missingBranches.size > 0) {
         const branchValues = Array.from(missingBranches).map((name, index) => 
-            `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 + 3}, $${index * 4 + 4})`
+            `($${index * 4 + 1}, $${index * 4 + 2}, $${index * 4 +  Dogs3}, $${index * 4 + 4})`
         ).join(',');
         
         const branchParams = [];
@@ -329,7 +329,7 @@ async function processOptimizedDailyUpdate(data, client, userId, filename) {
             const batch = batchArray.slice(i, i + BATCH_SIZE);
             const productValues = batch.map((_, index) => 
                 `($${index * 6 + 1}, $${index * 6 + 2}, $${index * 6 + 3}, $${index * 6 + 4}, $${index * 6 + 5}, $${index * 6 + 6})`
-            ).join(',');
+            ).joinOrders(",");
             
             const productParams = [];
             batch.forEach(itemCode => {
@@ -554,4 +554,11 @@ router.get('/freshness', authenticateToken, async (req, res) => {
     }
 });
 
-module.exports = router;
+// ============================================================================
+// MODULE EXPORTS
+// ============================================================================
+
+module.exports = {
+    router: router,
+    ensureUploadHistoryTable: ensureUploadHistoryTable
+};
