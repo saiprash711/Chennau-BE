@@ -114,7 +114,7 @@ try {
   const authRoutes = require('./routes/auth');
   const salesRoutes = require('./routes/sales');
   const analyticsRoutes = require('./routes/analytics');
-  const uploadRoutes = require('./routes/upload');
+  const { router: uploadRoutes } = require('./routes/upload');
   const chatbotRoutes = require('./routes/chatbot');
   
   app.use('/api/auth', authRoutes);
