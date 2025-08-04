@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 // ============================================================================
 const allowedOrigins = [
   'http://localhost',
-  'http://127.0.0.1', 
+  'http://127.0.0.1',
   'null', // For local file testing
   'https://chennai-fe.vercel.app', // FIXED: Corrected URL without trailing slash
   'https://chennai-frontend.vercel.app', // Keep both variants just in case
@@ -23,9 +23,7 @@ const allowedOrigins = [
 const corsOptions = {
   origin: function (origin, callback, req) {
     console.log('🔍 CORS Check - Origin:', origin);
-    console.log('🔍 CORS Check - Request Headers:', req.headers);
-    console.log('🔍 CORS Check - Request Method:', req.method);
-    console.log('🔍 CORS Check - Request URL:', req.url);
+    // Removed: console.log('🔍 CORS Check - Request Headers:', this.req.headers);
     
     // Allow requests with no origin (mobile apps, curl, Postman, etc.)
     if (!origin) {
@@ -89,7 +87,7 @@ app.use((req, res, next) => {
 // HEALTH CHECK ROUTES (MOVED UP FOR PRIORITY)
 // ============================================================================
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Hansei Backend is WORKING!',
     cors: 'ENABLED - Fixed Configuration',
     timestamp: new Date().toISOString(),
@@ -99,7 +97,7 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   console.log('🏥 Health check requested from origin:', req.get('Origin'));
-  res.json({ 
+  res.json({
     status: 'healthy',
     cors: 'WORKING',
     backend: 'Chennai Backend Connected',
@@ -117,7 +115,7 @@ try {
   const analyticsRoutes = require('./routes/analytics');
   const uploadRoutes = require('./routes/upload');
   const chatbotRoutes = require('./routes/chatbot');
-  
+
   app.use('/api/auth', authRoutes);
   app.use('/api/sales', salesRoutes);
   app.use('/api/analytics', analyticsRoutes);
@@ -129,24 +127,24 @@ try {
 } catch (error) {
   console.log('⚠️ Warning: Some routes failed to load. Basic functionality will work.');
   console.log('Error details:', error.message);
-  
+
   // Create fallback routes if modules don't exist
   app.use('/api/auth', (req, res) => {
     res.status(503).json({ error: 'Auth service temporarily unavailable' });
   });
-  
+
   app.use('/api/sales', (req, res) => {
     res.status(503).json({ error: 'Sales service temporarily unavailable' });
   });
-  
+
   app.use('/api/analytics', (req, res) => {
     res.status(503).json({ error: 'Analytics service temporarily unavailable' });
   });
-  
+
   app.use('/api/upload', (req, res) => {
     res.status(503).json({ error: 'Upload service temporarily unavailable' });
   });
-  
+
   app.use('/api/chatbot', (req, res) => {
     res.status(503).json({ error: 'Chatbot service temporarily unavailable' });
   });
@@ -157,27 +155,27 @@ try {
 // ============================================================================
 app.use((err, req, res, next) => {
   console.error('❌ Global Error Handler:', err.message);
-  
+
   // Handle CORS errors specifically
   if (err.message.includes('CORS')) {
-    return res.status(403).json({ 
-      error: 'CORS policy violation', 
+    return res.status(403).json({
+      error: 'CORS policy violation',
       details: err.message,
-      allowedOrigins: allowedOrigins 
+      allowedOrigins: allowedOrigins
     });
   }
-  
-  res.status(500).json({ 
+
+  res.status(500).json({
     error: 'Internal server error',
-    message: err.message 
+    message: err.message
   });
 });
 
 // 404 handler
 app.use((req, res) => {
   console.log('❌ 404 - Route not found:', req.path);
-  res.status(404).json({ 
-    error: 'Endpoint not found', 
+  res.status(404).json({
+    error: 'Endpoint not found',
     path: req.path,
     availableEndpoints: ['/api/health', '/api/auth', '/api/sales', '/api/analytics', '/api/upload', '/api/chatbot']
   });
