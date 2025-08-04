@@ -11,51 +11,29 @@ const PORT = process.env.PORT || 3000;
 // ============================================================================
 // FIXED CORS CONFIGURATION
 // ============================================================================
+// List of all frontend URLs that are allowed to access this backend.
 const allowedOrigins = [
   'http://localhost',
-  'http://127.0.0.1', 
-  'null', // For local file testing
-  'https://chennai-fe.vercel.app', // FIXED: Corrected URL without trailing slash
-  'https://chennai-frontend.vercel.app', // Keep both variants just in case
-  'https://daikin-n9wy.onrender.com' // Your backend URL
+  'http://127.0.0.1',
+  'null', // For local file testing (opening index.html directly)
+  'https://chennai-fe.vercel.app', // Your Vercel frontend
+  'https://chennai-frontend.vercel.app', // A second variant just in case
+  'https://daikin-n9wy.onrender.com' // The backend itself
 ];
 
+// CORS options with a simplified, more robust origin check.
 const corsOptions = {
   origin: function (origin, callback) {
-    console.log('🔍 CORS Check - Origin:', origin);
+    console.log('🔍 CORS Check - Request Origin:', origin);
     
-    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
-    if (!origin) {
-      console.log('✅ No origin - allowing request');
-      return callback(null, true);
-    }
-
-    // Check if origin matches any allowed origin
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      // Handle 'null' origin for local file testing
-      if (allowedOrigin === 'null' && origin === 'null') {
-        return true;
-      }
-      
-      // Remove trailing slash from both for comparison
-      const cleanOrigin = origin.replace(/\/$/, '');
-      const cleanAllowed = allowedOrigin.replace(/\/$/, '');
-      
-      // Check exact match or startsWith for localhost/127.0.0.1 with different ports
-      const exactMatch = cleanOrigin === cleanAllowed;
-      const portVariantMatch = (allowedOrigin === 'http://localhost' || allowedOrigin === 'http://127.0.0.1') 
-        && cleanOrigin.startsWith(cleanAllowed);
-      
-      return exactMatch || portVariantMatch;
-    });
-
-    if (isAllowed) {
+    // Allow requests with no origin (like mobile apps or Postman)
+    // and requests from origins in our allowed list.
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       console.log('✅ CORS: Origin allowed -', origin);
       callback(null, true);
     } else {
-      console.error('❌ CORS: Origin not allowed -', origin);
-      console.error('📝 Allowed origins:', allowedOrigins);
-      callback(new Error(`CORS: Origin ${origin} not allowed`));
+      console.error('❌ CORS: Origin NOT allowed -', origin);
+      callback(new Error(`CORS Policy Violation: The origin ${origin} is not allowed.`));
     }
   },
   credentials: true,
@@ -64,10 +42,10 @@ const corsOptions = {
   allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization']
 };
 
-// Apply CORS middleware FIRST
+// Apply CORS middleware FIRST to ensure headers are set for all responses.
 app.use(cors(corsOptions));
 
-// Add explicit OPTIONS handling for preflight requests
+// Add explicit OPTIONS handling for preflight requests from browsers.
 app.options('*', cors(corsOptions));
 
 // ============================================================================
@@ -76,7 +54,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Add request logging for debugging
+// Add request logging for debugging.
 app.use((req, res, next) => {
   console.log(`📝 ${req.method} ${req.path} - Origin: ${req.get('Origin') || 'null'}`);
   next();
@@ -86,7 +64,7 @@ app.use((req, res, next) => {
 // HEALTH CHECK ROUTES (MOVED UP FOR PRIORITY)
 // ============================================================================
 app.get('/', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'Hansei Backend is WORKING!',
     cors: 'ENABLED - Fixed Configuration',
     timestamp: new Date().toISOString(),
@@ -96,7 +74,7 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   console.log('🏥 Health check requested from origin:', req.get('Origin'));
-  res.json({ 
+  res.json({
     status: 'healthy',
     cors: 'WORKING',
     backend: 'Chennai Backend Connected',
@@ -114,7 +92,7 @@ try {
   const analyticsRoutes = require('./routes/analytics');
   const uploadRoutes = require('./routes/upload');
   const chatbotRoutes = require('./routes/chatbot');
-  
+
   app.use('/api/auth', authRoutes);
   app.use('/api/sales', salesRoutes);
   app.use('/api/analytics', analyticsRoutes);
@@ -126,27 +104,13 @@ try {
 } catch (error) {
   console.log('⚠️ Warning: Some routes failed to load. Basic functionality will work.');
   console.log('Error details:', error.message);
-  
+
   // Create fallback routes if modules don't exist
-  app.use('/api/auth', (req, res) => {
-    res.status(503).json({ error: 'Auth service temporarily unavailable' });
-  });
-  
-  app.use('/api/sales', (req, res) => {
-    res.status(503).json({ error: 'Sales service temporarily unavailable' });
-  });
-  
-  app.use('/api/analytics', (req, res) => {
-    res.status(503).json({ error: 'Analytics service temporarily unavailable' });
-  });
-  
-  app.use('/api/upload', (req, res) => {
-    res.status(503).json({ error: 'Upload service temporarily unavailable' });
-  });
-  
-  app.use('/api/chatbot', (req, res) => {
-    res.status(503).json({ error: 'Chatbot service temporarily unavailable' });
-  });
+  app.use('/api/auth', (req, res) => res.status(503).json({ error: 'Auth service temporarily unavailable' }));
+  app.use('/api/sales', (req, res) => res.status(503).json({ error: 'Sales service temporarily unavailable' }));
+  app.use('/api/analytics', (req, res) => res.status(503).json({ error: 'Analytics service temporarily unavailable' }));
+  app.use('/api/upload', (req, res) => res.status(503).json({ error: 'Upload service temporarily unavailable' }));
+  app.use('/api/chatbot', (req, res) => res.status(503).json({ error: 'Chatbot service temporarily unavailable' }));
 }
 
 // ============================================================================
@@ -154,27 +118,27 @@ try {
 // ============================================================================
 app.use((err, req, res, next) => {
   console.error('❌ Global Error Handler:', err.message);
-  
+
   // Handle CORS errors specifically
   if (err.message.includes('CORS')) {
-    return res.status(403).json({ 
-      error: 'CORS policy violation', 
+    return res.status(403).json({
+      error: 'CORS policy violation',
       details: err.message,
-      allowedOrigins: allowedOrigins 
+      allowedOrigins: allowedOrigins
     });
   }
-  
-  res.status(500).json({ 
+
+  res.status(500).json({
     error: 'Internal server error',
-    message: err.message 
+    message: err.message
   });
 });
 
-// 404 handler
+// 404 handler for routes not found
 app.use((req, res) => {
   console.log('❌ 404 - Route not found:', req.path);
-  res.status(404).json({ 
-    error: 'Endpoint not found', 
+  res.status(404).json({
+    error: 'Endpoint not found',
     path: req.path,
     availableEndpoints: ['/api/health', '/api/auth', '/api/sales', '/api/analytics', '/api/upload', '/api/chatbot']
   });
@@ -196,7 +160,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('🚀 ==========================================');
 });
 
-// Enhanced error handling
+// Enhanced error handling for server startup
 server.on('error', (error) => {
   if (error.syscall !== 'listen') {
     throw error;
